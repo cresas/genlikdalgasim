@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş Dalga Simülasyonu - SI Birimleri</title>
+    <style>
+        /* CSS Değişkenleri (Varsayılan: Light Mod) */
+        :root {
+            --bg-color: #f0f4f8;
+            --primary-bg: #ffffff;
+            --secondary-bg: #e8f1f8;
+            --text-color: #2d3e50;
+            --heading-color: #1e2936;
+            --link-color: #17a2b8;
+            --accent-color: #17a2b8;
+            --accent-light: #0dcaf0;
+            --canvas-bg: #ffffff;
+            --control-group-bg: #f8f9fa;
+            --control-border: rgba(23, 162, 184, 0.2);
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --container-gradient: linear-gradient(135deg, #f0f4f8 0%, #e8f1f8 100%);
+            --wave-color-thumb: #17a2b8;
+            --wave-color-thumb-shadow: 0 2px 6px rgba(23, 162, 184, 0.3);
+        }
+
+        /* Dark Mod Değişkenleri */
+        body.dark-mode {
+            --bg-color: #1e2936;
+            --primary-bg: #2a3f54;
+            --secondary-bg: #34495e;
+            --text-color: #e8f1f8;
+            --heading-color: #ffffff;
+            --link-color: #0dcaf0;
+            --accent-color: #17a2b8;
+            --accent-light: #0dcaf0;
+            --canvas-bg: #2a3f54;
+            --control-group-bg: #2d3e50;
+            --control-border: rgba(23, 162, 184, 0.3);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --container-gradient: linear-gradient(135deg, #1e2936 0%, #2a3f54 100%);
+            --wave-color-thumb: #17a2b8;
+            --wave-color-thumb-shadow: 0 2px 6px rgba(23, 162, 184, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* Mobil Optimizasyon: Ana sayfa kaydırmasını engelle */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            height: 100vh;
+            overflow: hidden; 
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .container {
+            height: 100%; /* body'nin %100'ü */
+            display: flex;
+            flex-direction: column;
+            background: var(--primary-bg);
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        
+        h1 {
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 2rem;
+            color: var(--heading-color);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            transition: color 0.3s;
+            border-bottom: 2px solid var(--control-border);
+            flex-shrink: 0; /* Başlığın küçülmesini engelle */
+        }
+
+        .subtitle {
+            text-align: center;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: var(--text-color);
+            opacity: 0.9;
+            font-style: italic;
+            transition: color 0.3s;
+            border-bottom: 1px solid var(--control-border);
+            flex-shrink: 0; /* Alt başlığın küçülmesini engelle */
+        }
+        
+        .main-layout {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 250px 1fr 320px;
+            gap: 0;
+            overflow: hidden; /* Ana düzenin taşmasını engelle */
+        }
+
+        /* Sol Panel - Butonlar ve Wave Manager */
+        .left-panel {
+            background: var(--secondary-bg);
+            padding: 20px;
+            border-right: 2px solid var(--control-border);
+            overflow-y: auto; /* İçerik taşarsa kaydırma çubuğu çıksın */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .left-panel h3 {
+            color: var(--heading-color);
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        
+        .wave-manager {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Tema Değiştirme Düğmesi - Sağ Üst Köşe */
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark-mode #theme-toggle {
+            background: #ffffff;
+            color: #3b82f6;
+        }
+
+        #theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        #theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        #theme-toggle svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .add-wave-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, var(--accent-color), var(--accent-light));
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+        }
+        
+        .add-wave-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+        }
+        
+        .add-wave-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #wave-count {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--accent-color);
+            font-weight: bold;
+            padding: 8px;
+            background: var(--control-group-bg);
+            border-radius: 6px;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, var(--accent-color), var(--accent-light));
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(23, 162, 184, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .pause-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+        }
+        
+        .pause-btn:hover {
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        }
+
+        /* Orta Panel - Canvas */
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--bg-color);
+        }
+
+        .canvas-container {
+            background: var(--canvas-bg);
+            border-radius: 15px;
+            padding: 15px;
+            position: relative;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+            flex: 1; /* Kalan tüm dikey alanı kapla */
+            display: flex;
+            flex-direction: column;
+            min-height: 250px; /* Mobil görünüm için min yükseklik */
+            max-height: 100%;
+            overflow: hidden;
+        }
+        
+        .scale-info {
+            background: var(--secondary-bg);
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 11px;
+            text-align: center;
+            color: var(--text-color);
+            opacity: 0.8;
+            transition: background-color 0.3s, color 0.3s;
+            flex-shrink: 0;
+        }
+
+        canvas {
+            width: 100%;
+            flex: 1;
+            border-radius: 10px;
+            background: #000;
+            display: block;
+            cursor: crosshair;
+            min-height: 200px; /* Canvas için minimum yükseklik */
+        }
+        
+        .measurement-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--control-group-bg);
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--accent-color);
+            display: none;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--control-border);
+        }
+        
+        .wave-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            flex-shrink: 0;
+        }
+        
+        .info-card {
+            background: var(--secondary-bg);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid var(--accent-color);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            border-color: var(--accent-light);
+        }
+        
+        .info-card h4 {
+            margin-bottom: 6px;
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 0.85rem;
+            text-shadow: 0 0 5px rgba(76, 175, 80, 0.2);
+            transition: color 0.3s;
+        }
+        
+        .info-card div {
+            color: var(--heading-color);
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        /* Sağ Panel - Kontroller */
+        .right-panel {
+            background: var(--secondary-bg);
+            padding: 20px;
+            border-left: 2px solid var(--control-border);
+            overflow-y: auto; /* İçerik taşarsa kaydırma çubuğu çıksın */
+        }
+
+        .controls-header {
+            color: var(--heading-color);
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--accent-color);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .control-group {
+            background: var(--control-group-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid var(--control-border);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .control-group.selected {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .control-group h3 {
+            margin-bottom: 12px;
+            color: var(--heading-color);
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: color 0.3s;
+        }
+        
+        .wave-color {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 8px;
+        }
+        
+        .remove-wave {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .slider-container {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: var(--text-color);
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: var(--secondary-bg);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--wave-color-thumb);
+            cursor: pointer;
+            box-shadow: var(--wave-color-thumb-shadow);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--wave-color-thumb);
+            cursor: pointer;
+            border: none;
+            box-shadow: var(--wave-color-thumb-shadow);
+        }
+        
+        .value-display {
+            text-align: center;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-top: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            justify-content: center;
+        }
+        
+        .manual-input {
+            width: 70px;
+            padding: 6px 10px;
+            border: 2px solid var(--control-border);
+            border-radius: 6px;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .manual-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background: var(--secondary-bg);
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+        }
+        
+        .unit {
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 13px;
+            min-width: 22px;
+        }
+        
+        .calculated-info {
+            font-size: 10px;
+            color: var(--text-color);
+            opacity: 0.6;
+            text-align: center;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        /* Kılavuz Modal */
+        .guide-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .guide-content {
+            background: var(--primary-bg);
+            border-radius: 20px;
+            max-width: 800px;
+            max-height: 90vh;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--control-border);
+            transition: background 0.3s;
+        }
+        
+        .guide-header {
+            background: var(--secondary-bg);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--control-border);
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+        
+        .guide-header h2 {
+            margin: 0;
+            color: var(--heading-color);
+            font-size: 1.5rem;
+            text-shadow: none;
+            transition: color 0.3s;
+        }
+        
+        .guide-body {
+            padding: 30px;
+            max-height: calc(90vh - 100px);
+            overflow-y: auto;
+            color: var(--text-color);
+        }
+        
+        .guide-section {
+            margin-bottom: 25px;
+            background: var(--control-group-bg);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--control-border);
+            transition: background 0.3s;
+        }
+        
+        .guide-section h3 {
+            margin: 0 0 15px 0;
+            color: var(--accent-color);
+            font-size: 1.2rem;
+            text-shadow: none;
+            transition: color 0.3s;
+        }
+        
+        .guide-section p {
+            margin: 0 0 15px 0;
+            line-height: 1.6;
+            color: var(--text-color);
+            opacity: 0.9;
+        }
+        
+        .control-item {
+            margin-bottom: 12px;
+            padding: 10px 15px;
+            background: var(--secondary-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+            line-height: 1.5;
+            transition: background 0.3s;
+        }
+        
+        .control-item strong {
+            color: var(--accent-light);
+            text-shadow: none;
+            transition: color 0.3s;
+        }
+
+        .close-guide {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Mobil Uyumluluk İyileştirmeleri */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr; /* Sol Panel, Sağ Panel, Canvas sırasıyla */
+            }
+
+            h1 {
+                padding: 10px 15px;
+                font-size: 1.5rem;
+            }
+            
+            .subtitle {
+                padding: 5px 15px;
+                font-size: 0.9rem;
+            }
+
+            /* Kontrol Panellerinin Yüksekliğini Sınırla ve İçeride Kaydırmayı Etkinleştir */
+            .left-panel, .right-panel {
+                border: none;
+                border-bottom: 2px solid var(--control-border);
+                max-height: 25vh; /* Yüksekliği ekran yüksekliğinin %25'i ile sınırla */
+                min-height: 150px; /* Minimum bir yükseklik ver */
+                overflow-y: auto; /* İçerik taşarsa sadece bu panelde kaydırma çubuğu çıksın */
+                padding: 10px 15px;
+            }
+
+            /* Canvas Alanı Kalan Tüm Yüksekliği Alsın */
+            .center-panel {
+                order: 3;
+                padding: 10px; /* Mobil için kenar boşluklarını azalt */
+                min-height: 300px;
+                overflow-y: auto;
+            }
+
+            .left-panel {
+                order: 1;
+            }
+
+            .right-panel {
+                order: 2;
+            }
+
+            #theme-toggle {
+                top: 10px;
+                right: 10px;
+                width: 40px;
+                height: 40px;
+            }
+            
+            #theme-toggle svg {
+                width: 20px;
+                height: 20px;
+            }
+            
+            /* Bilgi Kartları Düzenlemesi */
+            .wave-info {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                gap: 5px; 
+            }
+            
+            .info-card {
+                padding: 8px;
+            }
+            
+            .info-card h4 {
+                font-size: 0.75rem; 
+            }
+            
+            .info-card div {
+                font-size: 0.85rem; 
+            }
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--secondary-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-light);
+        }
+    </style>
+</head>
+<body>
+    <button id="theme-toggle">
+        <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/>
+        </svg>
+        <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+            <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+        </svg>
+    </button>
+    
+    <div class="container">
+        <h1>🌊 Genlik & Dalga Boyu Atölyesi</h1>
+        <p class="subtitle">
+            Bu simülasyon, öğrencilerin farklı frekans ve genlikte dalgalar oluşturarak deney yapabilecekleri bir araçtır.
+        </p>
+        
+        <div class="main-layout">
+            <div class="left-panel">
+                <div>
+                    <h3>🎮 Kontroller</h3>
+                    <div class="buttons">
+                        <button onclick="toggleAnimation()" id="play-pause-btn">⏸️ Duraklat</button>
+                        <button onclick="resetWaves()">🔄 Sıfırla</button>
+                        <button onclick="toggleWavelengthMeasurement()" id="wavelength-btn" style="display: none;">📏 Dalga Boyu</button>
+                        <button onclick="toggleAmplitudeMeasurement()" id="amplitude-btn" style="display: none;">📐 Genlik</button>
+                        <button onclick="toggleGuide()" id="guide-btn">📖 Kılavuz</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>🌊 Dalga Yönetimi</h3>
+                    <div class="wave-manager">
+                        <button class="add-wave-btn" onclick="addWave()">➕ Yeni Dalga Ekle</button>
+                        <span id="wave-count">Dalga Sayısı: 1/3</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="center-panel">
+                <div class="canvas-container">
+                    <div class="scale-info">
+                        Ölçek: 1 piksel = 0.005 m (2x Yaklaştırılmış) | Zaman ölçeği: Gerçek zamanlı simülasyon
+                    </div>
+                    <div class="measurement-overlay" id="measurement-overlay"></div>
+                    <canvas id="waveCanvas"></canvas>
+                </div>
+                
+                <div class="wave-info">
+                    <div class="info-card">
+                        <h4>Seçili Dalga</h4>
+                        <div id="selected-wave-name">Dalga 1</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Frekans (f)</h4>
+                        <div id="selected-freq">2.0 Hz</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Dalga Boyu (λ)</h4>
+                        <div id="selected-wavelength">0.50 m</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Genlik (A)</h4>
+                        <div id="selected-amplitude">0.40 m</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Periyot (T)</h4>
+                        <div id="selected-period">0.50 s</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Dalga Hızı (v)</h4>
+                        <div id="selected-velocity">1.0 m/s</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <h3 class="controls-header">⚙️ Dalga Ayarları</h3>
+                <div class="controls" id="controls-container"></div>
+            </div>
+        </div>
+        
+        <div id="guide-modal" class="guide-modal" style="display: none;">
+            <div class="guide-content">
+                <div class="guide-header">
+                    <h2>📖 Kullanım Kılavuzu</h2>
+                    <button class="close-guide" onclick="toggleGuide()">✕</button>
+                </div>
+                <div class="guide-body">
+                    <div class="guide-section">
+                        <h3>🎯 Simülasyonun Amacı</h3>
+                        <p>Bu atölye çalışması, dalga kavramlarının görsel ve etkileşimli yöntemlerle öğrenilmesini amaçlar. Katılımcılar, farklı frekans ve genlik değerleri üzerinde deneyler yaparak dalgaların temel özelliklerini gözlemleyip analiz edebilirler.</p>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>🎮 Temel Kontroller</h3>
+                        <div class="control-item">
+                            <strong>⏸️ Duraklat / ▶️ Başlat:</strong> Dalga hareketini durdurup başlatır. Durdurduğunuzda ölçüm araçları görünür.
+                        </div>
+                        <div class="control-item">
+                            <strong>🔄 Sıfırla:</strong> Tüm dalgaları başlangıç değerlerine döndürür.
+                        </div>
+                        <div class="control-item">
+                            <strong>📏 Dalga Boyu:</strong> Seçili dalganın dalga boyunu ölçer ve gösterir (sadece tek dalga varken ve duraklama modunda).
+                        </div>
+                        <div class="control-item">
+                            <strong>📐 Genlik:</strong> Seçili dalganın genliğini ölçer ve gösterir (sadece tek dalga varken ve duraklama modunda).
+                        </div>
+                        <div class="control-item">
+                            <strong>🌙/☀️ Tema:</strong> Sağ üst köşedeki buton ile arayüz temasını karanlık veya aydınlık mod arasında değiştirir.
+                        </div>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>🌊 Dalga Yönetimi</h3>
+                        <div class="control-item">
+                            <strong>➕ Yeni Dalga Ekle:</strong> En fazla 3 dalga ekleyebilirsiniz. Her dalga farklı renkte görünür.
+                        </div>
+                        <div class="control-item">
+                            <strong>Dalga Seçimi:</strong> Dalga kontrol panellerine tıklayarak veya ekrandaki dalgaya tıklayarak dalga seçebilirsiniz. Seçili dalga paneli yeşil kenarlıkla vurgulanır.
+                        </div>
+                        <div class="control-item">
+                            <strong>× Dalga Silme:</strong> Her dalga panelindeki × butonuyla dalgayı silebilirsiniz (en az 1 dalga kalmalı).
+                        </div>
+                        <div class="control-item">
+                            <strong>Ölçüm Kısıtlaması:</strong> Dalga boyu ve genlik ölçüm butonları sadece tek dalga kaldığında ve simülasyon durdurulduğunda görünür.
+                        </div>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>🌊 Temel Dalga Kavramları</h3>
+                        <div class="control-item">
+                            <strong>Dalga Tepesi:</strong> Bir dalganın denge konumunun üzerinde kalan, en yüksek noktasıdır.
+                        </div>
+                        <div class="control-item">
+                            <strong>Dalga Çukuru:</strong> Bir dalganın denge konumunun altında kalan, en alçak noktasıdır.
+                        </div>
+                        <div class="control-item">
+                            <strong>Denge Konumu:</strong> Dalganın hareket etmediği durumda bulunduğu orta çizgidir (y = 0).
+                        </div>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>⚙️ Dalga Ayarları</h3>
+                        <div class="control-item">
+                            <strong>Frekans (Hz):</strong> Dalganın saniyedeki titreşim sayısı. Arttırdıkça dalga daha sık, azalttıkça daha seyrek olur.
+                        </div>
+                        <div class="control-item">
+                            <strong>Genlik (A):</strong> Dalganın maksimum uzanımıdır. "A" sembolüyle gösterilen genliğin SI'da birimi metredir (m). Arttırdıkça dalga daha yüksek, azalttıkça daha alçak olur.
+                        </div>
+                        <div class="control-item">
+                            <strong>Dalga Boyu (λ):</strong> Ardışık iki dalga tepesi ya da iki dalga çukuru arasındaki mesafedir. λ (lamda) sembolüyle gösterilir ve SI'da birimi metredir (m). Frekansla ters orantılıdır (λ = v/f).
+                        </div>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>📊 Bilgi Paneli</h3>
+                        <p>Canvas altındaki kartlarda seçili dalganın tüm özellikleri görüntülenir:</p>
+                        <div class="control-item">
+                            <strong>Frekans (f):</strong> Saniyedeki titreşim sayısıdır (Hz - Hertz birimi ile).
+                        </div>
+                        <div class="control-item">
+                            <strong>Dalga Boyu (λ):</strong> Ardışık iki dalga tepesi ya da iki dalga çukuru arasındaki mesafedir. Otomatik hesaplanan değer gösterilir.
+                        </div>
+                        <div class="control-item">
+                            <strong>Genlik (A):</strong> Dalganın maksimum uzanımıdır. Dalganın denge konumundan en uzak noktaya olan mesafesidir.
+                        </div>
+                        <div class="control-item">
+                            <strong>Periyot (T):</strong> Bir tam titreşimin süresidir (saniye cinsinden).
+                        </div>
+                        <div class="control-item">
+                            <strong>Dalga Hızı (v):</strong> Sabit 1 m/s olarak ayarlanmıştır.
+                        </div>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>🔬 Deneyler ve Gözlemler</h3>
+                        <div class="control-item">
+                            <strong>Frekans Etkisi:</strong> Frekansı değiştirerek dalga boyunun nasıl değiştiğini gözlemleyiniz.
+                        </div>
+                        <div class="control-item">
+                            <strong>Genlik Etkisi:</strong> Genliği değiştirerek dalganın yüksekliğinin değişimini izleyiniz.
+                        </div>
+                        <div class="control-item">
+                            <strong>Dalga Girişimi:</strong> Birden fazla dalga ekleyerek dalgaların etkileşimini inceleyiniz.
+                        </div>
+                        <div class="control-item">
+                            <strong>Ölçüm Yapma:</strong> Simülasyonu durdurup ölçüm araçlarıyla hassas değerler alınız.
+                        </div>
+                    </div>
+                    
+                    <div class="guide-section">
+                        <h3>💡 İpuçları</h3>
+                        <div class="control-item">
+                            • Değerleri hem kaydırıcılarla hem de sayı girişiyle değiştiriniz
+                        </div>
+                        <div class="control-item">
+                            • Dalga boyunu değiştirdiğinizde frekansın otomatik olarak güncellendiğini gözlemleyiniz
+                        </div>
+                        <div class="control-item">
+                            • Ölçüm araçlarının sadece tek dalga varken ve simülasyon durdurulduğunda çalıştığını unutmayınız
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tema Yönetimi
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+        const themeKey = 'wave-sim-theme';
+
+        // Tema tercihi kaydetme
+        function setPreferredTheme(theme) {
+            localStorage.setItem(themeKey, theme);
+            body.classList.toggle('dark-mode', theme === 'dark');
+            
+            const moonIcon = document.getElementById('moon-icon');
+            const sunIcon = document.getElementById('sun-icon');
+            
+            if (theme === 'dark') {
+                moonIcon.style.display = 'none';
+                sunIcon.style.display = 'block';
+            } else {
+                moonIcon.style.display = 'block';
+                sunIcon.style.display = 'none';
+            }
+        }
+
+        // Tema tercihi yükleme
+        function loadPreferredTheme() {
+            const savedTheme = localStorage.getItem(themeKey);
+            
+            if (savedTheme) {
+                setPreferredTheme(savedTheme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                setPreferredTheme('dark');
+            } else {
+                setPreferredTheme('light');
+            }
+        }
+
+        // Tema değiştirme işlevi
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setPreferredTheme(newTheme);
+        });
+
+        // Sayfa yüklendiğinde temayı uygula
+        window.addEventListener('load', loadPreferredTheme);
+        
+        // --- Dalga Simülasyonu ---
+        
+        const canvas = document.getElementById('waveCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Canvas boyutlarını ayarla
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.imageSmoothingEnabled = true;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        let animationId;
+        let time = 0;
+        let isPlaying = true;
+        let showWavelengthMeasurement = false;
+        let showAmplitudeMeasurement = false;
+        let selectedWaveIndex = 0;
+        
+        const waveColors = ['#00a8ff', '#ff6b81', '#1dd1a1', '#ff9f43', '#54a0ff'];
+        
+        let waves = [
+            { freq: 2, amp: 0.4, color: waveColors[0], phase: 0, name: 'Dalga 1' }
+        ];
+        
+        const pixelToMeter = 0.005;
+        const meterToPixel = 200;
+        
+        function createWaveControls() {
+            const container = document.getElementById('controls-container');
+            container.innerHTML = '';
+            
+            waves.forEach((wave, index) => {
+                const controlGroup = document.createElement('div');
+                controlGroup.className = `control-group ${index === selectedWaveIndex ? 'selected' : ''}`;
+                controlGroup.onclick = (e) => {
+                    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                         selectWave(index);
+                    }
+                };
+                
+                controlGroup.innerHTML = `
+                    <h3>
+                        ${wave.name}
+                        <div>
+                            <span class="wave-color" style="background-color: ${wave.color}"></span>
+                            ${waves.length > 1 ? `<button class="remove-wave" onclick="removeWave(${index}); event.stopPropagation();">×</button>` : ''}
+                        </div>
+                    </h3>
+                    <div class="slider-container">
+                        <label for="freq${index}">Frekans (Hz)</label>
+                        <input type="range" id="freq${index}" min="0.5" max="10" step="0.1" value="${wave.freq}">
+                        <div class="input-group">
+                            <input type="number" id="freq${index}-input" min="0.5" max="10" step="0.1" value="${wave.freq.toFixed(1)}" class="manual-input">
+                            <span class="unit">Hz</span>
+                        </div>
+                    </div>
+                    <div class="slider-container">
+                        <label for="amp${index}">Genlik (m)</label>
+                        <input type="range" id="amp${index}" min="0.1" max="1" step="0.01" value="${wave.amp}">
+                        <div class="input-group">
+                            <input type="number" id="amp${index}-input" min="0.1" max="1" step="0.01" value="${wave.amp.toFixed(2)}" class="manual-input">
+                            <span class="unit">m</span>
+                        </div>
+                    </div>
+                    <div class="slider-container">
+                        <label>Dalga Boyu (m)</label>
+                        <div class="input-group">
+                            <input type="number" id="wavelength${index}-input" min="0.1" max="20" step="0.01" value="${(1.0/wave.freq).toFixed(2)}" class="manual-input">
+                            <span class="unit">m</span>
+                        </div>
+                        <div class="calculated-info">Hesaplanan: λ = v/f (v=1m/s)</div>
+                    </div>
+                `;
+                
+                container.appendChild(controlGroup);
+                
+                // Event listeners
+                document.getElementById(`freq${index}`).addEventListener('input', (e) => {
+                    waves[index].freq = parseFloat(e.target.value);
+                    document.getElementById(`freq${index}-input`).value = waves[index].freq.toFixed(1);
+                    document.getElementById(`wavelength${index}-input`).value = (1.0/waves[index].freq).toFixed(2);
+                    updateWaveInfo();
+                });
+                
+                document.getElementById(`freq${index}-input`).addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    if (value >= 0.5 && value <= 10) {
+                        waves[index].freq = value;
+                        document.getElementById(`freq${index}`).value = value;
+                        document.getElementById(`wavelength${index}-input`).value = (1.0/value).toFixed(2);
+                        updateWaveInfo();
+                    }
+                });
+                
+                document.getElementById(`amp${index}`).addEventListener('input', (e) => {
+                    waves[index].amp = parseFloat(e.target.value);
+                    document.getElementById(`amp${index}-input`).value = waves[index].amp.toFixed(2);
+                    updateWaveInfo();
+                });
+                
+                document.getElementById(`amp${index}-input`).addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    if (value >= 0.1 && value <= 1) {
+                        waves[index].amp = value;
+                        document.getElementById(`amp${index}`).value = value;
+                        updateWaveInfo();
+                    }
+                });
+                
+                document.getElementById(`wavelength${index}-input`).addEventListener('input', (e) => {
+                    const wavelength = parseFloat(e.target.value);
+                    if (wavelength >= 0.1 && wavelength <= 20) {
+                        const frequency = 1.0 / wavelength;
+                        if (frequency >= 0.5 && frequency <= 10) {
+                            waves[index].freq = frequency;
+                            document.getElementById(`freq${index}`).value = frequency;
+                            document.getElementById(`freq${index}-input`).value = frequency.toFixed(1);
+                            updateWaveInfo();
+                        }
+                    }
+                });
+            });
+            
+            updateWaveCount();
+        }
+        
+        function selectWave(index) {
+            selectedWaveIndex = index;
+            document.querySelectorAll('.control-group').forEach((group, i) => {
+                group.classList.toggle('selected', i === index);
+            });
+            updateWaveInfo();
+        }
+        
+        function addWave() {
+            if (waves.length < 3) {
+                const usedColors = waves.map(wave => wave.color);
+                let availableColor = null;
+                
+                for (let color of waveColors) {
+                    if (!usedColors.includes(color)) {
+                        availableColor = color;
+                        break;
+                    }
+                }
+                
+                const phaseShifts = [0, Math.PI/3, Math.PI/2];
+                
+                const newWave = {
+                    freq: 1.5 + (waves.length * 0.3),
+                    amp: 0.25 + (waves.length * 0.1),
+                    color: availableColor || waveColors[waves.length],
+                    phase: phaseShifts[waves.length] || 0,
+                    name: `Dalga ${waves.length + 1}`
+                };
+                waves.push(newWave);
+                
+                hideAllMeasurements();
+                createWaveControls();
+                selectWave(waves.length - 1);
+                updateMeasurementButtons();
+            }
+        }
+        
+        function removeWave(index) {
+            if (waves.length > 1) {
+                waves.splice(index, 1);
+                waves.forEach((wave, i) => {
+                    wave.name = `Dalga ${i + 1}`;
+                });
+                if (selectedWaveIndex >= waves.length) {
+                    selectedWaveIndex = waves.length - 1;
+                }
+                
+                hideAllMeasurements();
+                createWaveControls();
+                updateWaveInfo();
+                updateMeasurementButtons();
+            }
+        }
+        
+        function updateWaveCount() {
+            document.getElementById('wave-count').textContent = `Dalga Sayısı: ${waves.length}/3`;
+            document.querySelector('.add-wave-btn').disabled = waves.length >= 3;
+        }
+        
+        function updateWaveInfo() {
+            const selectedWave = waves[selectedWaveIndex];
+            const waveSpeed = 1.0;
+            const wavelength = waveSpeed / selectedWave.freq;
+            const period = 1 / selectedWave.freq;
+            
+            document.getElementById('selected-wave-name').textContent = selectedWave.name;
+            document.getElementById('selected-freq').textContent = selectedWave.freq.toFixed(1) + ' Hz';
+            document.getElementById('selected-wavelength').textContent = wavelength.toFixed(2) + ' m';
+            document.getElementById('selected-amplitude').textContent = selectedWave.amp.toFixed(2) + ' m';
+            document.getElementById('selected-period').textContent = period.toFixed(2) + ' s';
+            document.getElementById('selected-velocity').textContent = waveSpeed.toFixed(1) + ' m/s';
+        }
+        
+        function drawGrid() {
+            const gridColor = body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            const centerLineColor = body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)';
+            const labelColor = body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+            
+            ctx.strokeStyle = gridColor;
+            ctx.lineWidth = 1;
+            
+            const centerY = canvas.height / 2;
+            
+            // Yatay çizgiler (genlik ölçeği)
+            for (let i = -10; i <= 10; i++) {
+                const y = centerY + (i * meterToPixel * 0.1);
+                if (y >= 0 && y <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // Dikey çizgiler (dalga boyu ölçeği)
+            for (let x = 0; x < canvas.width; x += meterToPixel * 0.05) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Merkez çizgisi (y = 0)
+            ctx.strokeStyle = centerLineColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            
+            // Sol tarafta genlik değerlerini göster (0.2m aralıklarla)
+            ctx.fillStyle = labelColor;
+            ctx.font = 'bold 13px monospace';
+            ctx.textAlign = 'left';
+            
+            // Genlik değerleri: 1.0, 0.8, 0.6, 0.4, 0.2, 0, -0.2, -0.4, -0.6, -0.8, -1.0
+            const amplitudeValues = [
+                { value: 1.0, multiplier: -10 },
+                { value: 0.8, multiplier: -8 },
+                { value: 0.6, multiplier: -6 },
+                { value: 0.4, multiplier: -4 },
+                { value: 0.2, multiplier: -2 },
+                { value: 0.0, multiplier: 0 },
+                { value: -0.2, multiplier: 2 },
+                { value: -0.4, multiplier: 4 },
+                { value: -0.6, multiplier: 6 },
+                { value: -0.8, multiplier: 8 },
+                { value: -1.0, multiplier: 10 }
+            ];
+            
+            amplitudeValues.forEach(item => {
+                const y = centerY + (item.multiplier * meterToPixel * 0.1);
+                if (y >= 15 && y <= canvas.height - 15) {
+                    // Arka plan kutusu
+                    const text = `${item.value.toFixed(1)} m`;
+                    const textWidth = ctx.measureText(text).width;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(5, y - 11, textWidth + 10, 18);
+                    
+                    // Metin
+                    ctx.fillStyle = labelColor;
+                    ctx.fillText(text, 10, y + 4);
+                }
+            });
+            
+            ctx.textAlign = 'start'; // Reset text align
+        }
+        
+        function drawWave(wave, alpha = 1) {
+            ctx.globalAlpha = alpha;
+            ctx.strokeStyle = wave.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            const centerY = canvas.height / 2;
+            let firstPoint = true;
+            
+            for (let x = 0; x < canvas.width; x += 2) {
+                const xInMeters = x * pixelToMeter;
+                const waveValue = wave.amp * Math.sin(2 * Math.PI * wave.freq * (xInMeters - time * 0.005) + wave.phase);
+                const y = centerY - (waveValue * meterToPixel);
+                
+                if (firstPoint) {
+                    ctx.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        
+        function drawWavelengthMeasurement() {
+            const selectedWave = waves[selectedWaveIndex];
+            const centerY = canvas.height / 2;
+            
+            const wavelengthInMeters = 1.0 / selectedWave.freq;
+            const wavelengthPixels = wavelengthInMeters * meterToPixel;
+            
+            let peaks = [];
+            let valleys = [];
+            
+            for (let x = 0; x < canvas.width; x += 0.5) {
+                const xInMeters = x * pixelToMeter;
+                const waveValue = selectedWave.amp * Math.sin(2 * Math.PI * selectedWave.freq * (xInMeters - time * 0.005) + selectedWave.phase);
+                const y = centerY - (waveValue * meterToPixel);
+                
+                const prevX = x - 0.5;
+                const nextX = x + 0.5;
+                
+                if (prevX >= 0 && nextX < canvas.width) {
+                    const prevXInMeters = prevX * pixelToMeter;
+                    const nextXInMeters = nextX * pixelToMeter;
+                    
+                    const prevWaveValue = selectedWave.amp * Math.sin(2 * Math.PI * selectedWave.freq * (prevXInMeters - time * 0.005) + selectedWave.phase);
+                    const nextWaveValue = selectedWave.amp * Math.sin(2 * Math.PI * selectedWave.freq * (nextXInMeters - time * 0.005) + selectedWave.phase);
+                    
+                    if (prevWaveValue < waveValue && waveValue > nextWaveValue && Math.abs(waveValue - selectedWave.amp) < 0.01) {
+                        peaks.push({ x, y, xInMeters, value: waveValue });
+                    }
+                    
+                    if (prevWaveValue > waveValue && waveValue < nextWaveValue && Math.abs(waveValue + selectedWave.amp) < 0.01) {
+                        valleys.push({ x, y, xInMeters, value: waveValue });
+                    }
+                }
+            }
+            
+            let firstPoint = null;
+            let secondPoint = null;
+            let pointType = '';
+            
+            if (peaks.length >= 2) {
+                firstPoint = peaks[0];
+                secondPoint = peaks[1];
+                pointType = 'tepe';
+            } else if (valleys.length >= 2) {
+                firstPoint = valleys[0];
+                secondPoint = valleys[1];
+                pointType = 'çukur';
+            }
+            
+            if (firstPoint && secondPoint) {
+                ctx.strokeStyle = selectedWave.color;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([]);
+                
+                const offsetY = pointType === 'tepe' ? -30 : 30;
+                
+                ctx.beginPath();
+                ctx.moveTo(firstPoint.x, firstPoint.y + offsetY);
+                ctx.lineTo(secondPoint.x, secondPoint.y + offsetY);
+                ctx.stroke();
+                
+                ctx.setLineDash([2, 2]);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(firstPoint.x, firstPoint.y);
+                ctx.lineTo(firstPoint.x, firstPoint.y + offsetY + (pointType === 'tepe' ? 5 : -5));
+                ctx.moveTo(secondPoint.x, secondPoint.y);
+                ctx.lineTo(secondPoint.x, secondPoint.y + offsetY + (pointType === 'tepe' ? 5 : -5));
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(firstPoint.x + 8, firstPoint.y + offsetY - 4);
+                ctx.lineTo(firstPoint.x, firstPoint.y + offsetY);
+                ctx.lineTo(firstPoint.x + 8, firstPoint.y + offsetY + 4);
+                ctx.moveTo(secondPoint.x - 8, secondPoint.y + offsetY - 4);
+                ctx.lineTo(secondPoint.x, secondPoint.y + offsetY);
+                ctx.lineTo(secondPoint.x - 8, secondPoint.y + offsetY + 4);
+                ctx.stroke();
+                
+                ctx.fillStyle = selectedWave.color;
+                ctx.font = 'bold 14px monospace';
+                const actualDistance = Math.abs(secondPoint.xInMeters - firstPoint.xInMeters);
+                const wavelengthText = `λ = ${actualDistance.toFixed(3)} m`;
+                const textWidth = ctx.measureText(wavelengthText).width;
+                const textX = (firstPoint.x + secondPoint.x) / 2 - textWidth / 2;
+                
+                ctx.fillStyle = body.classList.contains('dark-mode') ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+                ctx.fillRect(textX - 5, firstPoint.y + offsetY - 25, textWidth + 10, 20);
+                
+                ctx.fillStyle = selectedWave.color;
+                ctx.fillText(wavelengthText, textX, firstPoint.y + offsetY - 10);
+                
+                ctx.fillStyle = selectedWave.color;
+                ctx.beginPath();
+                ctx.arc(firstPoint.x, firstPoint.y, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(secondPoint.x, secondPoint.y, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)';
+                ctx.font = '11px monospace';
+                ctx.fillText(`${pointType} noktaları arası`, textX, firstPoint.y + offsetY + 35);
+            }
+        }
+        
+        function drawAmplitudeMeasurement() {
+            const selectedWave = waves[selectedWaveIndex];
+            const centerY = canvas.height / 2;
+            
+            const amplitudeStartX = canvas.width - 120;
+            const amplitudeEndY = centerY - selectedWave.amp * meterToPixel;
+            
+            ctx.strokeStyle = selectedWave.color;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            
+            ctx.beginPath();
+            ctx.moveTo(amplitudeStartX, centerY);
+            ctx.lineTo(amplitudeStartX, amplitudeEndY);
+            ctx.stroke();
+            
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(amplitudeStartX - 8, centerY);
+            ctx.lineTo(amplitudeStartX + 8, centerY);
+            ctx.moveTo(amplitudeStartX - 8, amplitudeEndY);
+            ctx.lineTo(amplitudeStartX + 8, amplitudeEndY);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(amplitudeStartX - 4, centerY - 8);
+            ctx.lineTo(amplitudeStartX, centerY);
+            ctx.lineTo(amplitudeStartX + 4, centerY - 8);
+            ctx.moveTo(amplitudeStartX - 4, amplitudeEndY + 8);
+            ctx.lineTo(amplitudeStartX, amplitudeEndY);
+            ctx.lineTo(amplitudeStartX + 4, amplitudeEndY + 8);
+            ctx.stroke();
+            
+            const amplitudeText = `A = ${selectedWave.amp.toFixed(2)} m`;
+            const amplitudeMidY = (centerY + amplitudeEndY) / 2;
+            
+            ctx.fillStyle = body.classList.contains('dark-mode') ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+            const ampTextWidth = ctx.measureText(amplitudeText).width;
+            ctx.fillRect(amplitudeStartX - ampTextWidth - 25, amplitudeMidY - 10, ampTextWidth + 10, 20);
+            ctx.fillStyle = selectedWave.color;
+            ctx.font = 'bold 14px monospace';
+            ctx.fillText(amplitudeText, amplitudeStartX - ampTextWidth - 20, amplitudeMidY + 5);
+            
+            ctx.fillStyle = body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)';
+            ctx.font = '12px monospace';
+            ctx.fillText('y = 0', amplitudeStartX - 40, centerY - 5);
+            
+            ctx.setLineDash([]);
+        }
+        
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawGrid();
+            
+            waves.forEach(wave => {
+                drawWave(wave, 1.0);
+            });
+            
+            if (!isPlaying) {
+                if (showWavelengthMeasurement) {
+                    drawWavelengthMeasurement();
+                }
+                if (showAmplitudeMeasurement) {
+                    drawAmplitudeMeasurement();
+                }
+            }
+            
+            if (isPlaying) {
+                time += 1;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function hideAllMeasurements() {
+            showWavelengthMeasurement = false;
+            showAmplitudeMeasurement = false;
+            document.getElementById('wavelength-btn').textContent = '📏 Dalga Boyu';
+            document.getElementById('amplitude-btn').textContent = '📐 Genlik';
+        }
+        
+        function updateMeasurementButtons() {
+            const wavelengthBtn = document.getElementById('wavelength-btn');
+            const amplitudeBtn = document.getElementById('amplitude-btn');
+            
+            if (waves.length === 1 && !isPlaying) {
+                wavelengthBtn.style.display = 'inline-block';
+                amplitudeBtn.style.display = 'inline-block';
+            } else {
+                wavelengthBtn.style.display = 'none';
+                amplitudeBtn.style.display = 'none';
+                hideAllMeasurements();
+            }
+        }
+        
+        function toggleAnimation() {
+            isPlaying = !isPlaying;
+            const btn = document.getElementById('play-pause-btn');
+            
+            if (isPlaying) {
+                btn.textContent = '⏸️ Duraklat';
+                hideAllMeasurements();
+            } else {
+                btn.textContent = '▶️ Başlat';
+            }
+            
+            updateMeasurementButtons();
+        }
+        
+        function toggleWavelengthMeasurement() {
+            showWavelengthMeasurement = !showWavelengthMeasurement;
+            const btn = document.getElementById('wavelength-btn');
+            btn.textContent = showWavelengthMeasurement ? '📏 Dalga Boyunu Gizle' : '📏 Dalga Boyu';
+            
+            if (showWavelengthMeasurement) {
+                showAmplitudeMeasurement = false;
+                document.getElementById('amplitude-btn').textContent = '📐 Genlik';
+            }
+        }
+        
+        function toggleAmplitudeMeasurement() {
+            showAmplitudeMeasurement = !showAmplitudeMeasurement;
+            const btn = document.getElementById('amplitude-btn');
+            btn.textContent = showAmplitudeMeasurement ? '📐 Genliği Gizle' : '📐 Genlik';
+            
+            if (showAmplitudeMeasurement) {
+                showWavelengthMeasurement = false;
+                document.getElementById('wavelength-btn').textContent = '📏 Dalga Boyu';
+            }
+        }
+        
+        function resetWaves() {
+            time = 0;
+            waves = [
+                { freq: 2, amp: 0.4, color: waveColors[0], phase: 0, name: 'Dalga 1' }
+            ];
+            selectedWaveIndex = 0;
+            
+            hideAllMeasurements();
+            createWaveControls();
+            updateWaveInfo();
+            updateMeasurementButtons();
+        }
+        
+        function toggleGuide() {
+            const modal = document.getElementById('guide-modal');
+            if (modal.style.display === 'none' || modal.style.display === '') {
+                modal.style.display = 'flex';
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+        
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('guide-modal');
+            if (e.target === modal) {
+                toggleGuide();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('guide-modal');
+                if (modal.style.display === 'flex') {
+                    toggleGuide();
+                }
+            }
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            let minDistance = Infinity;
+            let closestWaveIndex = 0;
+            
+            waves.forEach((wave, index) => {
+                const xInMeters = x * pixelToMeter;
+                const waveValue = wave.amp * Math.sin(2 * Math.PI * wave.freq * (xInMeters - time * 0.005) + wave.phase); 
+                const waveY = canvas.height / 2 - (waveValue * meterToPixel);
+                const distance = Math.abs(y - waveY);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestWaveIndex = index;
+                }
+            });
+            
+            if (minDistance < 50) {
+                selectWave(closestWaveIndex);
+            }
+        });
+        
+        createWaveControls();
+        updateWaveInfo();
+        updateMeasurementButtons();
+        animate();
+    </script>
+</body>
+</html>
